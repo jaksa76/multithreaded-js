@@ -51,4 +51,38 @@ describe("Server Integration Tests", () => {
       server.stop();
     });
   });
+
+  describe("Alternate App Server", () => {
+    let server: Server;
+    const port = 3003;
+    const baseUrl = `http://localhost:${port}`;
+
+    beforeAll(() => {
+      server = new Server("../app/alternate-app.ts", 2, true);
+      server.start(port);
+      // Give server a moment to start
+      return new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    test("should respond to /greet/:name endpoint", async () => {
+      const response = await fetch(`${baseUrl}/greet/Alice`);
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Greetings, Alice!");
+    });
+
+    test("should respond to /square/:n endpoint", async () => {
+      const response = await fetch(`${baseUrl}/square/7`);
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Square of 7 is 49");
+    });
+
+    afterAll(() => {
+      server.stop();
+    });
+  });
+
 });

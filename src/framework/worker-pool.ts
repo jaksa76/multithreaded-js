@@ -3,12 +3,16 @@ export class WorkerPool {
   private busyWorkers = new Set<Worker>();
   private numWorkers: number;
 
-  constructor(workerScript: string, numWorkers: number = 30) {
+  constructor(appScript: string, numWorkers: number = 30) {
     this.numWorkers = numWorkers;
     
     // Initialize worker pool
     for (let i = 0; i < numWorkers; i++) {
-      const worker = new Worker(workerScript);
+      const worker = new Worker(new URL("./worker.ts", import.meta.url).href);
+      
+      // Send initialization message with app file name
+      worker.postMessage({ type: 'init', appScript });
+      
       this.idleWorkers.push(worker);
     }
   }

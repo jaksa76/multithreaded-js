@@ -6,10 +6,10 @@ export class Server {
   private multithreaded: boolean;
   private server?: any;
 
-  constructor(workerPath: string, poolSize: number, multithreaded: boolean = true) {
+  constructor(appScript: string, poolSize: number, multithreaded: boolean = true) {
     this.multithreaded = multithreaded;
     if (multithreaded) {
-      this.workerPool = new WorkerPool(workerPath, poolSize);
+      this.workerPool = new WorkerPool(appScript, poolSize);
     }
   }
 

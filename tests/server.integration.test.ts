@@ -8,7 +8,7 @@ describe("Server Integration Tests", () => {
     const baseUrl = `http://localhost:${port}`;
 
     beforeAll(() => {
-      server = new Server("./src/framework/worker.ts", 4, true);
+      server = new Server("../app/my-app.ts", 4, true);
       server.start(port);
       // Give server a moment to start
       return new Promise((resolve) => setTimeout(resolve, 100));
@@ -33,7 +33,7 @@ describe("Server Integration Tests", () => {
     const baseUrl = `http://localhost:${port}`;
 
     beforeAll(() => {
-      server = new Server("./src/framework/worker.ts", 4, false);
+      server = new Server("../app/my-app.ts", 4, false);
       server.start(port);
       // Give server a moment to start
       return new Promise((resolve) => setTimeout(resolve, 100));

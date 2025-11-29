@@ -10,6 +10,11 @@ class MockWorker {
   constructor(public scriptURL: string) {}
 
   postMessage(data: any) {
+    // Ignore init messages (don't respond to them)
+    if (data && data.type === 'init') {
+      return;
+    }
+    
     // Simulate async worker response
     setTimeout(() => {
       if (this.onmessage) {
@@ -51,7 +56,7 @@ afterEach(() => {
 describe("WorkerPool", () => {
   describe("Constructor", () => {
     test("should create a pool with default number of workers", () => {
-      const pool = new WorkerPool("./test-worker.ts");
+      const pool = new WorkerPool("./src/app/my-app.ts");
       const stats = pool.getStats();
       
       expect(stats.total).toBe(30);
@@ -60,7 +65,7 @@ describe("WorkerPool", () => {
     });
 
     test("should create a pool with specified number of workers", () => {
-      const pool = new WorkerPool("./test-worker.ts", 10);
+      const pool = new WorkerPool("./src/app/my-app.ts", 10);
       const stats = pool.getStats();
       
       expect(stats.total).toBe(10);
@@ -69,15 +74,15 @@ describe("WorkerPool", () => {
     });
 
     test("should create workers with correct script path", () => {
-      const scriptPath = "./my-custom-worker.ts";
-      const pool = new WorkerPool(scriptPath, 5);
+      const appScript = "./src/app/my-app.ts";
+      const pool = new WorkerPool(appScript, 5);
       
       // Workers are created, verify pool is initialized
       expect(pool.getStats().total).toBe(5);
     });
 
     test("should handle single worker pool", () => {
-      const pool = new WorkerPool("./worker.ts", 1);
+      const pool = new WorkerPool("./src/app/my-app.ts", 1);
       const stats = pool.getStats();
       
       expect(stats.total).toBe(1);
@@ -86,7 +91,7 @@ describe("WorkerPool", () => {
     });
 
     test("should handle large worker pool", () => {
-      const pool = new WorkerPool("./worker.ts", 100);
+      const pool = new WorkerPool("./src/app/my-app.ts", 100);
       const stats = pool.getStats();
       
       expect(stats.total).toBe(100);
@@ -97,7 +102,7 @@ describe("WorkerPool", () => {
 
   describe("dispatch", () => {
     test("should dispatch request to idle worker", async () => {
-      const pool = new WorkerPool("./worker.ts", 5);
+      const pool = new WorkerPool("./src/app/my-app.ts", 5);
       const request = { path: "/test" };
       
       const response = await pool.dispatch(request);
@@ -107,7 +112,7 @@ describe("WorkerPool", () => {
     });
 
     test("should mark worker as busy during processing", async () => {
-      const pool = new WorkerPool("./worker.ts", 5);
+      const pool = new WorkerPool("./src/app/my-app.ts", 5);
       const request = { path: "/test" };
       
       // Start dispatch but don't await immediately
@@ -125,7 +130,7 @@ describe("WorkerPool", () => {
     });
 
     test("should return worker to idle pool after completion", async () => {
-      const pool = new WorkerPool("./worker.ts", 3);
+      const pool = new WorkerPool("./src/app/my-app.ts", 3);
       
       const initialStats = pool.getStats();
       expect(initialStats.idle).toBe(3);
@@ -139,7 +144,7 @@ describe("WorkerPool", () => {
     });
 
     test("should handle multiple concurrent requests", async () => {
-      const pool = new WorkerPool("./worker.ts", 5);
+      const pool = new WorkerPool("./src/app/my-app.ts", 5);
       
       const requests = Array.from({ length: 3 }, (_, i) => ({
         id: i,
@@ -162,7 +167,7 @@ describe("WorkerPool", () => {
 
     test("should handle requests up to pool capacity", async () => {
       const poolSize = 5;
-      const pool = new WorkerPool("./worker.ts", poolSize);
+      const pool = new WorkerPool("./src/app/my-app.ts", poolSize);
       
       const requests = Array.from({ length: poolSize }, (_, i) => ({
         id: i,
@@ -175,7 +180,7 @@ describe("WorkerPool", () => {
     });
 
     test("should throw error when no idle workers available", async () => {
-      const pool = new WorkerPool("./worker.ts", 0);
+      const pool = new WorkerPool("./src/app/my-app.ts", 0);
       
       await expect(pool.dispatch({ test: "data" })).rejects.toThrow(
         "No idle workers available"
@@ -183,7 +188,7 @@ describe("WorkerPool", () => {
     });
 
     test("should handle sequential requests correctly", async () => {
-      const pool = new WorkerPool("./worker.ts", 2);
+      const pool = new WorkerPool("./src/app/my-app.ts", 2);
       
       const response1 = await pool.dispatch({ id: 1 });
       expect(response1).toBeDefined();
@@ -200,7 +205,7 @@ describe("WorkerPool", () => {
     });
 
     test("should pass correct request data to worker", async () => {
-      const pool = new WorkerPool("./worker.ts", 1);
+      const pool = new WorkerPool("./src/app/my-app.ts", 1);
       const request = { 
         path: "/api/users", 
         method: "GET",
@@ -214,7 +219,7 @@ describe("WorkerPool", () => {
     });
 
     test("should handle complex request objects", async () => {
-      const pool = new WorkerPool("./worker.ts", 1);
+      const pool = new WorkerPool("./src/app/my-app.ts", 1);
       const complexRequest = {
         nested: {
           deep: {
@@ -234,7 +239,7 @@ describe("WorkerPool", () => {
     });
 
     test("should handle empty request object", async () => {
-      const pool = new WorkerPool("./worker.ts", 1);
+      const pool = new WorkerPool("./src/app/my-app.ts", 1);
       const response = await pool.dispatch({});
       
       expect(response).toBeDefined();
@@ -243,7 +248,7 @@ describe("WorkerPool", () => {
 
   describe("getStats", () => {
     test("should return correct initial stats", () => {
-      const pool = new WorkerPool("./worker.ts", 10);
+      const pool = new WorkerPool("./src/app/my-app.ts", 10);
       const stats = pool.getStats();
       
       expect(stats).toHaveProperty("idle");
@@ -255,7 +260,7 @@ describe("WorkerPool", () => {
     });
 
     test("should update stats during request processing", async () => {
-      const pool = new WorkerPool("./worker.ts", 5);
+      const pool = new WorkerPool("./src/app/my-app.ts", 5);
       
       // Initial state
       expect(pool.getStats().idle).toBe(5);
@@ -269,7 +274,7 @@ describe("WorkerPool", () => {
     });
 
     test("should maintain consistent total count", async () => {
-      const pool = new WorkerPool("./worker.ts", 7);
+      const pool = new WorkerPool("./src/app/my-app.ts", 7);
       
       const initialStats = pool.getStats();
       expect(initialStats.total).toBe(7);
@@ -288,7 +293,7 @@ describe("WorkerPool", () => {
     });
 
     test("should reflect correct stats with multiple concurrent requests", async () => {
-      const pool = new WorkerPool("./worker.ts", 10);
+      const pool = new WorkerPool("./src/app/my-app.ts", 10);
       
       const promises = Array.from({ length: 5 }, (_, i) => 
         pool.dispatch({ id: i })
@@ -305,7 +310,7 @@ describe("WorkerPool", () => {
 
   describe("Edge Cases", () => {
     test("should handle rapid successive dispatches", async () => {
-      const pool = new WorkerPool("./worker.ts", 3);
+      const pool = new WorkerPool("./src/app/my-app.ts", 3);
       
       const responses = await Promise.all([
         pool.dispatch({ id: 1 }),
@@ -321,7 +326,7 @@ describe("WorkerPool", () => {
     });
 
     test("should handle dispatches that exceed pool size sequentially", async () => {
-      const pool = new WorkerPool("./worker.ts", 2);
+      const pool = new WorkerPool("./src/app/my-app.ts", 2);
       
       // First two should work
       await pool.dispatch({ id: 1 });
@@ -335,7 +340,7 @@ describe("WorkerPool", () => {
     });
 
     test("should maintain worker pool integrity after many operations", async () => {
-      const pool = new WorkerPool("./worker.ts", 5);
+      const pool = new WorkerPool("./src/app/my-app.ts", 5);
       
       // Execute 20 operations (4x pool size)
       for (let i = 0; i < 20; i++) {
@@ -349,14 +354,14 @@ describe("WorkerPool", () => {
     });
 
     test("should handle null request", async () => {
-      const pool = new WorkerPool("./worker.ts", 1);
+      const pool = new WorkerPool("./src/app/my-app.ts", 1);
       const response = await pool.dispatch(null);
       
       expect(response).toBeDefined();
     });
 
     test("should work with minimal pool (1 worker) under load", async () => {
-      const pool = new WorkerPool("./worker.ts", 1);
+      const pool = new WorkerPool("./src/app/my-app.ts", 1);
       
       // Sequential execution since we only have 1 worker
       for (let i = 0; i < 5; i++) {
@@ -372,7 +377,7 @@ describe("WorkerPool", () => {
 
   describe("Performance", () => {
     test("should handle high concurrent load", async () => {
-      const pool = new WorkerPool("./worker.ts", 50);
+      const pool = new WorkerPool("./src/app/my-app.ts", 50);
       const numRequests = 50;
       
       const startTime = Date.now();
@@ -397,7 +402,7 @@ describe("WorkerPool", () => {
     });
 
     test("should reuse workers efficiently", async () => {
-      const pool = new WorkerPool("./worker.ts", 15);
+      const pool = new WorkerPool("./src/app/my-app.ts", 15);
       
       // Execute more requests than available workers
       const requests = Array.from({ length: 15 }, (_, i) => ({ id: i }));
@@ -417,7 +422,7 @@ describe("WorkerPool", () => {
 
   describe("Type Safety", () => {
     test("should handle various request types", async () => {
-      const pool = new WorkerPool("./worker.ts", 3);
+      const pool = new WorkerPool("./src/app/my-app.ts", 3);
       
       await pool.dispatch({ type: "string", value: "test" });
       await pool.dispatch({ type: "number", value: 123 });
@@ -430,21 +435,21 @@ describe("WorkerPool", () => {
     });
 
     test("should handle string request", async () => {
-      const pool = new WorkerPool("./worker.ts", 1);
+      const pool = new WorkerPool("./src/app/my-app.ts", 1);
       const response = await pool.dispatch("simple string");
       
       expect(response).toBeDefined();
     });
 
     test("should handle number request", async () => {
-      const pool = new WorkerPool("./worker.ts", 1);
+      const pool = new WorkerPool("./src/app/my-app.ts", 1);
       const response = await pool.dispatch(42);
       
       expect(response).toBeDefined();
     });
 
     test("should handle array request", async () => {
-      const pool = new WorkerPool("./worker.ts", 1);
+      const pool = new WorkerPool("./src/app/my-app.ts", 1);
       const response = await pool.dispatch([1, 2, 3, "test"]);
       
       expect(response).toBeDefined();

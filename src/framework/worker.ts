@@ -1,6 +1,8 @@
+import type { App } from "./app";
+
 declare var self: Worker;
 
-let app: any;
+let app: App;
 let isInitialized = false;
 
 self.onmessage = async (event: MessageEvent) => {

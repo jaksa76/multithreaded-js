@@ -3,7 +3,7 @@ export class WorkerPool {
   private busyWorkers = new Set<Worker>();
   private numWorkers: number;
 
-  constructor(workerScript: string, numWorkers: number = 30) {
+  constructor(workerScript: string, numWorkers: number = 1) {
     this.numWorkers = numWorkers;
     
     // Initialize worker pool

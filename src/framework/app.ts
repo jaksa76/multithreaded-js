@@ -33,11 +33,9 @@ export class App {
     for (const route of this.routes) {
       const { match, params } = this.matchRoute(route.pattern, request.path);
       if (match) {
-        console.log(`Matched route: ${route.pattern} with params:`, params);
         // If there are URL parameters, pass them; otherwise pass the original arg
         const handlerArg = Object.keys(params).length > 0 ? params : request.arg;
         const response = route.handler(handlerArg);
-        console.log(`Response from handler: ${response}`);
         return response;
       }
     }

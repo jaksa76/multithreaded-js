@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
-import { WorkerPool } from "./WorkerPool";
+import { WorkerPool } from "../src/framework/worker-pool";
 
 // Mock worker for testing
 class MockWorker {

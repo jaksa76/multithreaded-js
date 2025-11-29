@@ -1,30 +1,10 @@
-import { WorkerPool } from "./src/framework/worker-pool";
+import { Server } from "./src/framework/server";
 
-// Create a worker pool
-const workerPool = new WorkerPool("./src/framework/worker.ts", 30);
+// Control multithreading via MULTITHREADED environment variable
+// Defaults to true (multithreaded) if not specified
+const isMultithreaded = process.env.MULTITHREADED !== "false";
 
-function deepPrint(obj: any, indent: string = "") {
-  for (const key in obj) {
-    const value = obj[key];
-    if (typeof value === "object" && value !== null) {
-      console.log(`${indent}${key}:`);
-      deepPrint(value, indent + "  ");
-    } else {
-      console.log(`${indent}${key}: ${value}`);
-    }
-  }
-}
+console.log(`Starting server in ${isMultithreaded ? 'multi-threaded' : 'single-threaded'} mode`);
 
-Bun.serve({
-  port: 3000,
-  async fetch(request) {
-    const url = new URL(request.url);
-    const path = url.pathname;
-
-    // Dispatch the request to a worker
-    const response = await workerPool.dispatch({ path });
-    // wait for the response from the worker
-
-    return new Response(response);
-  },
-});
+const server = new Server("./src/framework/worker.ts", 30, isMultithreaded);
+server.start(3000);

@@ -5,9 +5,9 @@
   "private": true,
   "scripts": {
     "start": "bun run --watch index.ts",
+    "start:single-threaded": "MULTITHREADED=false bun run --watch index.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "start:single-threaded": "bun run --watch --hot index-single-thread.ts",
     "test:k6": "k6 run src/performance-tests/k6-fibonacci.js"
   },
   "devDependencies": {

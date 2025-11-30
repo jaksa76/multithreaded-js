@@ -31,4 +31,46 @@ app.get("/user/:id", (params: any) => {
   return `User ${params.id} in ${format} format`;
 });
 
+// POST examples
+app.post("/users", (params: any) => {
+  return `Created user: ${params.body.name} (${params.body.email})`;
+});
+
+app.post("/api/calculate", (params: any) => {
+  const { a, b, operation } = params.body;
+  let result;
+  switch (operation) {
+    case 'add': result = a + b; break;
+    case 'multiply': result = a * b; break;
+    case 'subtract': result = a - b; break;
+    case 'divide': result = a / b; break;
+    default: result = 0;
+  }
+  return `Result: ${result}`;
+});
+
+// PUT example
+app.put("/users/:id", (params: any) => {
+  return `Updated user ${params.id} with data: ${JSON.stringify(params.body)}`;
+});
+
+// PATCH example
+app.patch("/users/:id", (params: any) => {
+  return `Patched user ${params.id} with: ${JSON.stringify(params.body)}`;
+});
+
+// DELETE example
+app.delete("/users/:id", (params: any) => {
+  return `Deleted user ${params.id}`;
+});
+
+// Example with headers
+app.get("/protected", (params: any) => {
+  const auth = params?.headers?.authorization;
+  if (!auth || !auth.startsWith("Bearer ")) {
+    return "Unauthorized";
+  }
+  return `Access granted with token: ${auth.substring(7)}`;
+});
+
 export { app };

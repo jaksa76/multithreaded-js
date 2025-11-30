@@ -1,27 +1,54 @@
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
 export class Request {
   path: string;
+  method: HttpMethod;
   query: Record<string, string>;
   params: Record<string, string>;
+  headers: Record<string, string>;
+  body?: any;
   arg?: any;
 
   constructor(
     path: string,
+    method: HttpMethod = 'GET',
     query: Record<string, string> = {},
     params: Record<string, string> = {},
+    headers: Record<string, string> = {},
+    body?: any,
     arg?: any
   ) {
     this.path = path;
+    this.method = method;
     this.query = query;
     this.params = params;
+    this.headers = headers;
+    this.body = body;
     this.arg = arg;
   }
 }
 
 export class App {
-  private routes: { pattern: string; handler: (arg: any) => any }[] = [];
+  private routes: { method: HttpMethod; pattern: string; handler: (arg: any) => any }[] = [];
 
   get(path: string, handler: (arg: any) => any) {
-    this.routes.push({ pattern: path, handler });
+    this.routes.push({ method: 'GET', pattern: path, handler });
+  }
+
+  post(path: string, handler: (arg: any) => any) {
+    this.routes.push({ method: 'POST', pattern: path, handler });
+  }
+
+  put(path: string, handler: (arg: any) => any) {
+    this.routes.push({ method: 'PUT', pattern: path, handler });
+  }
+
+  patch(path: string, handler: (arg: any) => any) {
+    this.routes.push({ method: 'PATCH', pattern: path, handler });
+  }
+
+  delete(path: string, handler: (arg: any) => any) {
+    this.routes.push({ method: 'DELETE', pattern: path, handler });
   }
 
   private matchRoute(pattern: string, path: string): { match: boolean; params: any } {
@@ -55,31 +82,47 @@ export class App {
     return { match: true, params };
   }
 
-  handle(request: Request | { path: string; query?: Record<string, string>; arg?: any }): any {
+  handle(request: Request | { path: string; method?: HttpMethod; query?: Record<string, string>; headers?: Record<string, string>; body?: any; arg?: any }): any {
     // Support both Request objects and plain objects for backward compatibility
     const req = request instanceof Request ? request : new Request(
       request.path,
+      request.method || 'GET',
       request.query || {},
       {},
+      request.headers || {},
+      request.body,
       request.arg
     );
 
     for (const route of this.routes) {
+      // Check if method and path match
+      if (route.method !== req.method) {
+        continue;
+      }
+
       const { match, params } = this.matchRoute(route.pattern, req.path);
       if (match) {
-        // Create handler argument with params, query, and potentially arg
+        // Create handler argument with params, query, headers, body, and potentially arg
         const hasParams = Object.keys(params).length > 0;
         const hasQuery = Object.keys(req.query).length > 0;
+        const hasHeaders = Object.keys(req.headers).length > 0;
+        const hasBody = req.body !== undefined;
         
         let handlerArg: any;
-        if (hasParams || hasQuery) {
-          // Merge params and query, with query nested
+        if (hasParams || hasQuery || hasHeaders || hasBody) {
+          // Build rich request object
           handlerArg = { ...params };
           if (hasQuery) {
             handlerArg.query = req.query;
           }
+          if (hasHeaders) {
+            handlerArg.headers = req.headers;
+          }
+          if (hasBody) {
+            handlerArg.body = req.body;
+          }
         } else {
-          // No params or query, use original arg
+          // No params, query, headers, or body - use original arg
           handlerArg = req.arg;
         }
         
@@ -87,6 +130,6 @@ export class App {
         return response;
       }
     }
-    return `No handler for path: ${req.path}`;
+    return `No handler for ${req.method} ${req.path}`;
   }
 }

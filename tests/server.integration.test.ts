@@ -46,6 +46,70 @@ describe("Server Integration Tests", () => {
       expect(text).toBe("User 42 in json format");
     });
 
+    test("should handle POST request with JSON body", async () => {
+      const response = await fetch(`${baseUrl}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Alice", email: "alice@test.com" }),
+      });
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Created user: Alice (alice@test.com)");
+    });
+
+    test("should handle PUT request", async () => {
+      const response = await fetch(`${baseUrl}/users/123`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Bob", status: "active" }),
+      });
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toContain("Updated user 123");
+    });
+
+    test("should handle PATCH request", async () => {
+      const response = await fetch(`${baseUrl}/users/456`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "new@example.com" }),
+      });
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toContain("Patched user 456");
+    });
+
+    test("should handle DELETE request", async () => {
+      const response = await fetch(`${baseUrl}/users/789`, {
+        method: "DELETE",
+      });
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Deleted user 789");
+    });
+
+    test("should handle request with authorization header", async () => {
+      const response = await fetch(`${baseUrl}/protected`, {
+        headers: { "Authorization": "Bearer test-token-123" },
+      });
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Access granted with token: test-token-123");
+    });
+
+    test("should reject request without authorization", async () => {
+      const response = await fetch(`${baseUrl}/protected`);
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Unauthorized");
+    });
+
     afterAll(() => {
       server.stop();
     });
@@ -85,6 +149,28 @@ describe("Server Integration Tests", () => {
       
       expect(response.status).toBe(200);
       expect(text).toBe("User 123 in xml format");
+    });
+
+    test("should handle POST request with JSON body", async () => {
+      const response = await fetch(`${baseUrl}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Charlie", email: "charlie@test.com" }),
+      });
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Created user: Charlie (charlie@test.com)");
+    });
+
+    test("should handle DELETE request", async () => {
+      const response = await fetch(`${baseUrl}/users/999`, {
+        method: "DELETE",
+      });
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Deleted user 999");
     });
 
     afterAll(() => {

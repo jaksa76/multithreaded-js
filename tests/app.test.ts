@@ -10,11 +10,14 @@ describe("App", () => {
 
   describe("Request class", () => {
     test("should create Request with all parameters", () => {
-      const req = new Request("/test", { key: "value" }, { id: "123" }, "data");
+      const req = new Request("/test", "POST", { key: "value" }, { id: "123" }, { "content-type": "application/json" }, { name: "test" }, "data");
       
       expect(req.path).toBe("/test");
+      expect(req.method).toBe("POST");
       expect(req.query).toEqual({ key: "value" });
       expect(req.params).toEqual({ id: "123" });
+      expect(req.headers).toEqual({ "content-type": "application/json" });
+      expect(req.body).toEqual({ name: "test" });
       expect(req.arg).toBe("data");
     });
 
@@ -22,17 +25,29 @@ describe("App", () => {
       const req = new Request("/test");
       
       expect(req.path).toBe("/test");
+      expect(req.method).toBe("GET");
       expect(req.query).toEqual({});
       expect(req.params).toEqual({});
+      expect(req.headers).toEqual({});
+      expect(req.body).toBeUndefined();
       expect(req.arg).toBeUndefined();
     });
 
     test("should create Request with partial parameters", () => {
-      const req = new Request("/test", { sort: "asc" });
+      const req = new Request("/test", "GET", { sort: "asc" });
       
       expect(req.path).toBe("/test");
+      expect(req.method).toBe("GET");
       expect(req.query).toEqual({ sort: "asc" });
       expect(req.params).toEqual({});
+      expect(req.headers).toEqual({});
+    });
+
+    test("should create POST Request with body", () => {
+      const req = new Request("/api/users", "POST", {}, {}, {}, { name: "John", email: "john@example.com" });
+      
+      expect(req.method).toBe("POST");
+      expect(req.body).toEqual({ name: "John", email: "john@example.com" });
     });
   });
 
@@ -238,7 +253,7 @@ describe("App", () => {
           query: params.query,
         }));
         
-        const req = new Request("/test/123", { key: "value" });
+        const req = new Request("/test/123", "GET", { key: "value" });
         const response = app.handle(req);
         expect(response).toEqual({ id: "123", query: { key: "value" } });
       });
@@ -251,7 +266,7 @@ describe("App", () => {
           include: params.query.include,
         }));
         
-        const req = new Request("/user/42/posts/99", { format: "json", include: "comments" });
+        const req = new Request("/user/42/posts/99", "GET", { format: "json", include: "comments" });
         const response = app.handle(req);
         expect(response).toEqual({
           userId: "42",
@@ -262,26 +277,280 @@ describe("App", () => {
       });
     });
 
+    describe("HTTP methods", () => {
+      test("should handle POST request", () => {
+        app.post("/users", (params: any) => `Created user: ${params.body.name}`);
+        
+        const response = app.handle({ 
+          path: "/users", 
+          method: "POST",
+          body: { name: "Alice" }
+        });
+        expect(response).toBe("Created user: Alice");
+      });
+
+      test("should handle PUT request", () => {
+        app.put("/users/:id", (params: any) => 
+          `Updated user ${params.id} with ${params.body.name}`
+        );
+        
+        const response = app.handle({ 
+          path: "/users/123", 
+          method: "PUT",
+          body: { name: "Bob" }
+        });
+        expect(response).toBe("Updated user 123 with Bob");
+      });
+
+      test("should handle PATCH request", () => {
+        app.patch("/users/:id", (params: any) => 
+          `Patched user ${params.id}`
+        );
+        
+        const response = app.handle({ 
+          path: "/users/456", 
+          method: "PATCH",
+          body: { email: "new@example.com" }
+        });
+        expect(response).toBe("Patched user 456");
+      });
+
+      test("should handle DELETE request", () => {
+        app.delete("/users/:id", (params: any) => 
+          `Deleted user ${params.id}`
+        );
+        
+        const response = app.handle({ 
+          path: "/users/789", 
+          method: "DELETE"
+        });
+        expect(response).toBe("Deleted user 789");
+      });
+
+      test("should differentiate between GET and POST on same path", () => {
+        app.get("/items", () => "List items");
+        app.post("/items", (params: any) => `Created: ${params.body.name}`);
+        
+        expect(app.handle({ path: "/items", method: "GET" })).toBe("List items");
+        expect(app.handle({ 
+          path: "/items", 
+          method: "POST", 
+          body: { name: "item1" } 
+        })).toBe("Created: item1");
+      });
+
+      test("should return error for unsupported method", () => {
+        app.get("/test", () => "GET response");
+        
+        const response = app.handle({ path: "/test", method: "POST" });
+        expect(response).toBe("No handler for POST /test");
+      });
+    });
+
+    describe("headers", () => {
+      test("should pass headers to handler", () => {
+        app.get("/auth", (params: any) => 
+          `Token: ${params.headers.authorization}`
+        );
+        
+        const response = app.handle({ 
+          path: "/auth",
+          headers: { authorization: "Bearer xyz123" }
+        });
+        expect(response).toBe("Token: Bearer xyz123");
+      });
+
+      test("should handle multiple headers", () => {
+        app.post("/api/data", (params: any) => ({
+          contentType: params.headers["content-type"],
+          accept: params.headers.accept,
+        }));
+        
+        const response = app.handle({ 
+          path: "/api/data",
+          method: "POST",
+          headers: { 
+            "content-type": "application/json",
+            "accept": "application/json"
+          },
+          body: { data: "test" }
+        });
+        expect(response).toEqual({
+          contentType: "application/json",
+          accept: "application/json",
+        });
+      });
+
+      test("should handle request without headers", () => {
+        app.get("/test", (params: any) => params?.headers ? "has headers" : "no headers");
+        
+        const response = app.handle({ path: "/test" });
+        expect(response).toBe("no headers");
+      });
+    });
+
+    describe("body payloads", () => {
+      test("should pass JSON body to POST handler", () => {
+        app.post("/api/users", (params: any) => ({
+          name: params.body.name,
+          email: params.body.email,
+        }));
+        
+        const response = app.handle({ 
+          path: "/api/users",
+          method: "POST",
+          body: { name: "John", email: "john@test.com" }
+        });
+        expect(response).toEqual({ name: "John", email: "john@test.com" });
+      });
+
+      test("should pass body to PUT handler", () => {
+        app.put("/api/users/:id", (params: any) => ({
+          id: params.id,
+          updates: params.body,
+        }));
+        
+        const response = app.handle({ 
+          path: "/api/users/42",
+          method: "PUT",
+          body: { name: "Jane" }
+        });
+        expect(response).toEqual({ id: "42", updates: { name: "Jane" } });
+      });
+
+      test("should pass body to PATCH handler", () => {
+        app.patch("/api/users/:id", (params: any) => ({
+          id: params.id,
+          patch: params.body,
+        }));
+        
+        const response = app.handle({ 
+          path: "/api/users/99",
+          method: "PATCH",
+          body: { status: "active" }
+        });
+        expect(response).toEqual({ id: "99", patch: { status: "active" } });
+      });
+
+      test("should handle string body", () => {
+        app.post("/text", (params: any) => `Received: ${params.body}`);
+        
+        const response = app.handle({ 
+          path: "/text",
+          method: "POST",
+          body: "plain text data"
+        });
+        expect(response).toBe("Received: plain text data");
+      });
+
+      test("should handle array body", () => {
+        app.post("/batch", (params: any) => ({
+          count: params.body.length,
+          items: params.body,
+        }));
+        
+        const response = app.handle({ 
+          path: "/batch",
+          method: "POST",
+          body: [1, 2, 3, 4]
+        });
+        expect(response).toEqual({ count: 4, items: [1, 2, 3, 4] });
+      });
+
+      test("should handle null body", () => {
+        app.post("/nullable", (params: any) => ({
+          hasBody: params.body !== undefined,
+          body: params.body,
+        }));
+        
+        const response = app.handle({ 
+          path: "/nullable",
+          method: "POST",
+          body: null
+        });
+        expect(response).toEqual({ hasBody: true, body: null });
+      });
+    });
+
+    describe("combined features", () => {
+      test("should handle POST with path params, query, headers, and body", () => {
+        app.post("/api/:version/users/:id", (params: any) => ({
+          version: params.version,
+          userId: params.id,
+          format: params.query.format,
+          auth: params.headers.authorization,
+          data: params.body,
+        }));
+        
+        const response = app.handle({ 
+          path: "/api/v1/users/123",
+          method: "POST",
+          query: { format: "json" },
+          headers: { authorization: "Bearer token" },
+          body: { name: "Test" }
+        });
+        expect(response).toEqual({
+          version: "v1",
+          userId: "123",
+          format: "json",
+          auth: "Bearer token",
+          data: { name: "Test" },
+        });
+      });
+
+      test("should handle Request object with all features", () => {
+        app.put("/resource/:id", (params: any) => ({
+          id: params.id,
+          body: params.body,
+          query: params.query,
+          headers: params.headers,
+        }));
+        
+        const req = new Request(
+          "/resource/42",
+          "PUT",
+          { include: "meta" },
+          {},
+          { "x-api-key": "secret" },
+          { value: "updated" }
+        );
+        const response = app.handle(req);
+        expect(response).toEqual({
+          id: "42",
+          body: { value: "updated" },
+          query: { include: "meta" },
+          headers: { "x-api-key": "secret" },
+        });
+      });
+    });
+
     describe("route matching", () => {
       test("should return error message for unmatched route", () => {
         app.get("/existing", () => "found");
         
         const response = app.handle({ path: "/nonexistent" });
-        expect(response).toBe("No handler for path: /nonexistent");
+        expect(response).toBe("No handler for GET /nonexistent");
+      });
+
+      test("should return error message with correct method", () => {
+        app.post("/test", () => "posted");
+        
+        const response = app.handle({ path: "/test", method: "GET" });
+        expect(response).toBe("No handler for GET /test");
       });
 
       test("should not match route with different segment count", () => {
         app.get("/api/users", () => "users");
         
         const response = app.handle({ path: "/api/users/123" });
-        expect(response).toBe("No handler for path: /api/users/123");
+        expect(response).toBe("No handler for GET /api/users/123");
       });
 
       test("should not match route with different static segments", () => {
         app.get("/api/users", () => "users");
         
         const response = app.handle({ path: "/api/posts" });
-        expect(response).toBe("No handler for path: /api/posts");
+        expect(response).toBe("No handler for GET /api/posts");
       });
 
       test("should match first matching route when multiple routes could match", () => {

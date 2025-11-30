@@ -15,4 +15,20 @@ app.get("/fibonacci/:n", (params: { n: string }) => {
   return `Fibonacci of ${num} is ${fib(num)}`;
 });
 
+app.get("/search", (params: any) => {
+  const query = params?.query?.q || "";
+  return `Search results for: ${query}`;
+});
+
+app.get("/filter", (params: any) => {
+  const sort = params?.query?.sort || "none";
+  const limit = params?.query?.limit || "none";
+  return `Sort: ${sort}, Limit: ${limit}`;
+});
+
+app.get("/user/:id", (params: any) => {
+  const format = params?.query?.format || "html";
+  return `User ${params.id} in ${format} format`;
+});
+
 export { app };

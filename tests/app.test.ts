@@ -1,11 +1,39 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { App } from "../src/framework/app";
+import { App, Request } from "../src/framework/app";
 
 describe("App", () => {
   let app: App;
 
   beforeEach(() => {
     app = new App();
+  });
+
+  describe("Request class", () => {
+    test("should create Request with all parameters", () => {
+      const req = new Request("/test", { key: "value" }, { id: "123" }, "data");
+      
+      expect(req.path).toBe("/test");
+      expect(req.query).toEqual({ key: "value" });
+      expect(req.params).toEqual({ id: "123" });
+      expect(req.arg).toBe("data");
+    });
+
+    test("should create Request with defaults", () => {
+      const req = new Request("/test");
+      
+      expect(req.path).toBe("/test");
+      expect(req.query).toEqual({});
+      expect(req.params).toEqual({});
+      expect(req.arg).toBeUndefined();
+    });
+
+    test("should create Request with partial parameters", () => {
+      const req = new Request("/test", { sort: "asc" });
+      
+      expect(req.path).toBe("/test");
+      expect(req.query).toEqual({ sort: "asc" });
+      expect(req.params).toEqual({});
+    });
   });
 
   describe("get()", () => {
@@ -102,6 +130,135 @@ describe("App", () => {
         
         const response = app.handle({ path: "/item/123", arg: "ignored" });
         expect(response).toEqual({ id: "123" });
+      });
+    });
+
+    describe("query parameters", () => {
+      test("should handle single query parameter", () => {
+        app.get("/search", (params: any) => `Query: ${params.query.q}`);
+        
+        const response = app.handle({ path: "/search", query: { q: "test" } });
+        expect(response).toBe("Query: test");
+      });
+
+      test("should handle multiple query parameters", () => {
+        app.get("/search", (params: any) => 
+          `Sort: ${params.query.sort}, Limit: ${params.query.limit}`
+        );
+        
+        const response = app.handle({ 
+          path: "/search", 
+          query: { sort: "asc", limit: "10" } 
+        });
+        expect(response).toBe("Sort: asc, Limit: 10");
+      });
+
+      test("should handle query parameters with path parameters", () => {
+        app.get("/user/:id", (params: any) => 
+          `User: ${params.id}, Format: ${params.query.format}`
+        );
+        
+        const response = app.handle({ 
+          path: "/user/123", 
+          query: { format: "json" } 
+        });
+        expect(response).toBe("User: 123, Format: json");
+      });
+
+      test("should handle multiple path and query parameters", () => {
+        app.get("/api/:version/search/:category", (params: any) => ({
+          version: params.version,
+          category: params.category,
+          sort: params.query.sort,
+          limit: params.query.limit,
+        }));
+        
+        const response = app.handle({ 
+          path: "/api/v1/search/books",
+          query: { sort: "desc", limit: "20" }
+        });
+        expect(response).toEqual({
+          version: "v1",
+          category: "books",
+          sort: "desc",
+          limit: "20",
+        });
+      });
+
+      test("should handle empty query parameters object", () => {
+        app.get("/test", (params: any) => params);
+        
+        const response = app.handle({ path: "/test", query: {} });
+        expect(response).toBeUndefined();
+      });
+
+      test("should handle route with path params and empty query", () => {
+        app.get("/user/:id", (params: any) => params);
+        
+        const response = app.handle({ path: "/user/123", query: {} });
+        expect(response).toEqual({ id: "123" });
+      });
+
+      test("should handle route without path params but with query", () => {
+        app.get("/search", (params: any) => params);
+        
+        const response = app.handle({ 
+          path: "/search", 
+          query: { q: "test", page: "1" } 
+        });
+        expect(response).toEqual({ query: { q: "test", page: "1" } });
+      });
+
+      test("should handle query parameters with special characters", () => {
+        app.get("/search", (params: any) => params.query.q);
+        
+        const response = app.handle({ 
+          path: "/search", 
+          query: { q: "hello world" } 
+        });
+        expect(response).toBe("hello world");
+      });
+
+      test("should handle numeric query parameters", () => {
+        app.get("/items", (params: any) => ({
+          page: parseInt(params.query.page),
+          limit: parseInt(params.query.limit),
+        }));
+        
+        const response = app.handle({ 
+          path: "/items", 
+          query: { page: "2", limit: "50" } 
+        });
+        expect(response).toEqual({ page: 2, limit: 50 });
+      });
+
+      test("should handle Request object with query parameters", () => {
+        app.get("/test/:id", (params: any) => ({
+          id: params.id,
+          query: params.query,
+        }));
+        
+        const req = new Request("/test/123", { key: "value" });
+        const response = app.handle(req);
+        expect(response).toEqual({ id: "123", query: { key: "value" } });
+      });
+
+      test("should handle Request object with both path and query parameters", () => {
+        app.get("/user/:userId/posts/:postId", (params: any) => ({
+          userId: params.userId,
+          postId: params.postId,
+          format: params.query.format,
+          include: params.query.include,
+        }));
+        
+        const req = new Request("/user/42/posts/99", { format: "json", include: "comments" });
+        const response = app.handle(req);
+        expect(response).toEqual({
+          userId: "42",
+          postId: "99",
+          format: "json",
+          include: "comments",
+        });
       });
     });
 

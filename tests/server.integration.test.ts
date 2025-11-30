@@ -22,6 +22,30 @@ describe("Server Integration Tests", () => {
       expect(text).toBe("Hello, World!");
     });
 
+    test("should handle query parameters", async () => {
+      const response = await fetch(`${baseUrl}/search?q=test`);
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Search results for: test");
+    });
+
+    test("should handle multiple query parameters", async () => {
+      const response = await fetch(`${baseUrl}/filter?sort=asc&limit=10`);
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Sort: asc, Limit: 10");
+    });
+
+    test("should handle path and query parameters together", async () => {
+      const response = await fetch(`${baseUrl}/user/42?format=json`);
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("User 42 in json format");
+    });
+
     afterAll(() => {
       server.stop();
     });
@@ -45,6 +69,22 @@ describe("Server Integration Tests", () => {
       
       expect(response.status).toBe(200);
       expect(text).toBe("Hello, World!");
+    });
+
+    test("should handle query parameters", async () => {
+      const response = await fetch(`${baseUrl}/search?q=single`);
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("Search results for: single");
+    });
+
+    test("should handle path and query parameters together", async () => {
+      const response = await fetch(`${baseUrl}/user/123?format=xml`);
+      const text = await response.text();
+      
+      expect(response.status).toBe(200);
+      expect(text).toBe("User 123 in xml format");
     });
 
     afterAll(() => {

@@ -1,3 +1,22 @@
+export class Request {
+  path: string;
+  query: Record<string, string>;
+  params: Record<string, string>;
+  arg?: any;
+
+  constructor(
+    path: string,
+    query: Record<string, string> = {},
+    params: Record<string, string> = {},
+    arg?: any
+  ) {
+    this.path = path;
+    this.query = query;
+    this.params = params;
+    this.arg = arg;
+  }
+}
+
 export class App {
   private routes: { pattern: string; handler: (arg: any) => any }[] = [];
 
@@ -16,11 +35,18 @@ export class App {
     const params: any = {};
 
     for (let i = 0; i < patternParts.length; i++) {
-      if (patternParts[i].startsWith(':')) {
+      const patternPart = patternParts[i];
+      const pathPart = pathParts[i];
+      
+      if (patternPart === undefined || pathPart === undefined) {
+        return { match: false, params: {} };
+      }
+      
+      if (patternPart.startsWith(':')) {
         // This is a parameter
-        const paramName = patternParts[i].substring(1);
-        params[paramName] = pathParts[i];
-      } else if (patternParts[i] !== pathParts[i]) {
+        const paramName = patternPart.substring(1);
+        params[paramName] = pathPart;
+      } else if (patternPart !== pathPart) {
         // Static parts don't match
         return { match: false, params: {} };
       }
@@ -29,16 +55,38 @@ export class App {
     return { match: true, params };
   }
 
-  handle(request: { path: string; arg?: any }): any {
+  handle(request: Request | { path: string; query?: Record<string, string>; arg?: any }): any {
+    // Support both Request objects and plain objects for backward compatibility
+    const req = request instanceof Request ? request : new Request(
+      request.path,
+      request.query || {},
+      {},
+      request.arg
+    );
+
     for (const route of this.routes) {
-      const { match, params } = this.matchRoute(route.pattern, request.path);
+      const { match, params } = this.matchRoute(route.pattern, req.path);
       if (match) {
-        // If there are URL parameters, pass them; otherwise pass the original arg
-        const handlerArg = Object.keys(params).length > 0 ? params : request.arg;
+        // Create handler argument with params, query, and potentially arg
+        const hasParams = Object.keys(params).length > 0;
+        const hasQuery = Object.keys(req.query).length > 0;
+        
+        let handlerArg: any;
+        if (hasParams || hasQuery) {
+          // Merge params and query, with query nested
+          handlerArg = { ...params };
+          if (hasQuery) {
+            handlerArg.query = req.query;
+          }
+        } else {
+          // No params or query, use original arg
+          handlerArg = req.arg;
+        }
+        
         const response = route.handler(handlerArg);
         return response;
       }
     }
-    return `No handler for path: ${request.path}`;
+    return `No handler for path: ${req.path}`;
   }
 }

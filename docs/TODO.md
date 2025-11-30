@@ -1,0 +1,7 @@
+- add support for query parameters
+- add support for headers
+- add support for POST requests
+- add support for body payloads
+- add support for DELETE requests
+- add support for PUT requests
+- add support for PATCH requests

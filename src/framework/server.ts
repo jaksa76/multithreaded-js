@@ -20,14 +20,20 @@ export class Server {
       fetch: async (request) => {
         const url = new URL(request.url);
         const path = url.pathname;
+        
+        // Parse query parameters
+        const query: Record<string, string> = {};
+        url.searchParams.forEach((value, key) => {
+          query[key] = value;
+        });
 
         let response: string;
         if (self.multithreaded && self.workerPool) {
           // Dispatch the request to a worker
-          response = await self.workerPool.dispatch({ path });
+          response = await self.workerPool.dispatch({ path, query });
         } else {
           // Handle the request directly without multithreading
-          response = app.handle({ path });
+          response = app.handle({ path, query });
         }
 
         return new Response(response);
